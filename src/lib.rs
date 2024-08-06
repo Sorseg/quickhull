@@ -17,6 +17,8 @@ use glam::{DMat4, DVec3};
 use std::collections::{BTreeMap, BTreeSet, HashSet};
 use std::error::Error;
 use std::fmt;
+use std::fs::File;
+use std::io::Write;
 
 /// A polygonal face belonging to a [`ConvexHull`].
 #[derive(Debug, Clone)]
@@ -677,6 +679,46 @@ impl ConvexHull {
 
     /// Checks if the convex hull is convex with the given tolerance.
     fn is_convex(&self, tolerance: f64) -> bool {
+        if std::env::var("QUICKHULL_DEBUG_DUMP").is_ok_and(|v| v != "0") {
+            let mut f = File::create("quickhull.obj").unwrap();
+
+            // save the source data
+            writeln!(&mut f, "o source").unwrap();
+            for p in &self.points {
+                writeln!(&mut f, "v {} {} {}", p.x, p.y, p.z).unwrap();
+            }
+
+            // blender can only import vertices that are a part of a face
+            // add dummy faces for all the vertices
+            for i in 0..self.points.len()-2 {
+                writeln!(&mut f, "f {} {} {}", i, i + 1, i + 2).unwrap();
+            }
+
+            // save the resulting hull
+            writeln!(&mut f, "o hull").unwrap();
+            for face in self.faces.values() {
+                writeln!(
+                    &mut f,
+                    "f {} {} {}",
+                    face.indices[0], face.indices[1], face.indices[2]
+                )
+                .unwrap();
+            }
+
+            // save the concave faces additionally
+            for (i,face) in self.faces.values().enumerate() {
+                if position_from_face(&self.points, face, 0) > tolerance {
+                    writeln!(&mut f, "o concave{i}").unwrap();
+                    writeln!(
+                        &mut f,
+                        "f {} {} {}",
+                        face.indices[0], face.indices[1], face.indices[2]
+                    )
+                    .unwrap();
+                }
+            }
+        }
+
         for face in self.faces.values() {
             if position_from_face(&self.points, face, 0) > tolerance {
                 return false;
