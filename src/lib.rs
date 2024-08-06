@@ -22,6 +22,7 @@ use std::io::Write;
 /// A polygonal face belonging to a [`ConvexHull`].
 #[derive(Debug, Clone)]
 pub struct Face {
+    // FIXME: should be a [usize;3] to improve memory locality
     /// The indices of the face's points.
     pub indices: Vec<usize>,
     /// The indices of points in front of the face plane, or the points that can "see" the face,
@@ -114,6 +115,7 @@ impl ConvexHull {
     /// Attempts to compute a [`ConvexHull`] for the given set of points.
     pub fn try_new(
         points: &[DVec3],
+        // FIXME: remove
         tolerance: impl Into<Option<f64>>,
         max_iter: Option<usize>,
     ) -> Result<Self, ErrorKind> {
