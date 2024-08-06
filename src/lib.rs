@@ -1046,7 +1046,6 @@ fn sphere_test() {
 }
 
 #[test]
-#[ignore]
 fn heavy_sphere_test() {
     fn rot_z(point: DVec3, angle: f64) -> DVec3 {
         let e1 = angle.cos() * point[0] - angle.sin() * point[1];
