@@ -17,7 +17,6 @@ use glam::{DMat4, DVec3};
 use std::collections::{BTreeMap, BTreeSet, HashSet};
 use std::error::Error;
 use std::fmt;
-use std::fs::File;
 use std::io::Write;
 
 /// A polygonal face belonging to a [`ConvexHull`].
@@ -101,6 +100,14 @@ pub struct ConvexHull {
     pub points: Vec<DVec3>,
     /// The faces of the convex hull.
     faces: BTreeMap<usize, Face>,
+}
+
+fn debug_file() -> std::fs::File {
+    std::fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open("quickhull.obj")
+        .unwrap()
 }
 
 impl ConvexHull {
@@ -680,7 +687,7 @@ impl ConvexHull {
     /// Checks if the convex hull is convex with the given tolerance.
     fn is_convex(&self, tolerance: f64) -> bool {
         if std::env::var("QUICKHULL_DEBUG_DUMP").is_ok_and(|v| v != "0") {
-            let mut f = File::create("quickhull.obj").unwrap();
+            let mut f = debug_file();
 
             // save the source data
             writeln!(&mut f, "o source").unwrap();
@@ -690,8 +697,9 @@ impl ConvexHull {
 
             // blender can only import vertices that are a part of a face
             // add dummy faces for all the vertices
-            for i in 0..self.points.len()-2 {
-                writeln!(&mut f, "f {} {} {}", i, i + 1, i + 2).unwrap();
+            for i in 0..self.points.len() - 2 {
+                // obj files have indices starting from 1
+                writeln!(&mut f, "f {} {} {}", i + 1, i + 2, i + 3).unwrap();
             }
 
             // save the resulting hull
@@ -700,19 +708,23 @@ impl ConvexHull {
                 writeln!(
                     &mut f,
                     "f {} {} {}",
-                    face.indices[0], face.indices[1], face.indices[2]
+                    face.indices[0] + 1,
+                    face.indices[1] + 1,
+                    face.indices[2] + 1
                 )
                 .unwrap();
             }
 
             // save the concave faces additionally
-            for (i,face) in self.faces.values().enumerate() {
+            for (i, face) in self.faces.values().enumerate() {
                 if position_from_face(&self.points, face, 0) > tolerance {
                     writeln!(&mut f, "o concave{i}").unwrap();
                     writeln!(
                         &mut f,
                         "f {} {} {}",
-                        face.indices[0], face.indices[1], face.indices[2]
+                        face.indices[0] + 1,
+                        face.indices[1] + 1,
+                        face.indices[2] + 1
                     )
                     .unwrap();
                 }
